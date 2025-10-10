@@ -4,8 +4,8 @@ import { ContextType } from "../libs/logger"
 import { jsonOrStringForDb, jsonOrStringToJson, stringOrNullForDb, stringToHash } from "../utils"
 import _ from "lodash"
 import { sources } from "../sites/sources"
-import items from "./../../pharmacyItems.json"
-import connections from "./../../brandConnections.json"
+import items from "./../../local-json/pharmacyItems.json"
+import connections from "./../../local-json/brandConnections.json"
 
 type BrandsMapping = {
     [key: string]: string[]
