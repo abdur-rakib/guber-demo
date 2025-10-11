@@ -13,6 +13,53 @@ type BrandsMapping = {
 
 // Noise words
 const NOISE_WORDS = ["bio", "neb"]
+// Brands that MUST appear at the beginning
+const FRONT_ONLY_BRANDS = [
+    "rich", "rff", "flex", "ultra", "gum", 
+    "beauty", "orto", "free", "112", "kin", "happy"
+]
+// Brands that MUST appear at the beginning or second position
+const FRONT_OR_SECOND_BRANDS = ["heel", "contour", "nero", "rsv"]
+
+/**
+ * Checks if brand meets position requirements
+ * Some brands are only valid at specific positions in the title
+ */
+function checkBrandPosition(title: string, brand: string): boolean {
+    const normalizedTitle = normalizeBrandName(title)
+    const normalizedBrand = normalizeBrandName(brand)
+    const words = normalizedTitle.split(/\s+/)
+    
+    // Rule 3: Must be at front (position 0)
+    if (FRONT_ONLY_BRANDS.includes(normalizedBrand)) {
+        return words[0] === normalizedBrand
+    }
+    
+    // Rule 4: Must be at front OR second position (0 or 1)
+    if (FRONT_OR_SECOND_BRANDS.includes(normalizedBrand)) {
+        return words[0] === normalizedBrand || words[1] === normalizedBrand
+    }
+    
+    // If not position-sensitive, allow anywhere
+    return true
+}
+
+/**
+ * When multiple brands match, prioritize the one that appears first in title
+ */
+function prioritizeBrandsByPosition(
+    matchedBrands: string[], 
+    originalTitle: string
+): string[] {
+    return matchedBrands.sort((brandA, brandB) => {
+        const normalizedTitle = normalizeBrandName(originalTitle)
+        const posA = normalizedTitle.indexOf(normalizeBrandName(brandA))
+        const posB = normalizedTitle.indexOf(normalizeBrandName(brandB))
+        
+        // Sort by position (earliest first)
+        return posA - posB
+    })
+}
 
 /**
  * Removes noise words from product title before brand matching
