@@ -20,6 +20,8 @@ const FRONT_ONLY_BRANDS = [
 ]
 // Brands that MUST appear at the beginning or second position
 const FRONT_OR_SECOND_BRANDS = ["heel", "contour", "nero", "rsv"]
+// case sensitive brands
+const CASE_SENSITIVE_BRANDS = ["HAPPY"]
 
 /**
  * Checks if brand meets position requirements
@@ -127,7 +129,18 @@ function normalizeBrandName(brand: string): string {
 }
 
 export function checkBrandIsSeparateTerm(input: string, brand: string): boolean {
-    // Normalize both input and brand before matching
+    // Rule 6: Handle case-sensitive brands
+    if (CASE_SENSITIVE_BRANDS.includes(brand)) {
+        const escapedBrand = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        const matchFound = new RegExp(`\\b${escapedBrand}\\b`).test(input)
+        
+        if (!matchFound) return false
+        
+        // Check position rules
+        return checkBrandPosition(input, brand)
+    }
+    
+    // Rule 1: Normalize characters
     const normalizedInput = normalizeBrandName(input)
     const normalizedBrand = normalizeBrandName(brand)
 
@@ -142,9 +155,13 @@ export function checkBrandIsSeparateTerm(input: string, brand: string): boolean 
 
     // Check if the brand is a separate term in the string
     const separateTerm = new RegExp(`\\b${escapedBrand}\\b`, "i").test(normalizedInput)
-
-    // The brand should be at the beginning, end, or a separate term
-    return atBeginningOrEnd || separateTerm
+    
+    const matchFound = atBeginningOrEnd || separateTerm
+    
+    if (!matchFound) return false
+    
+    // Rules 3 & 4: Check position requirements
+    return checkBrandPosition(input, brand)
 }
 
 export async function assignBrandIfKnown(countryCode: countryCodes, source: sources, job?: Job) {
@@ -155,6 +172,7 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
     const versionKey = "assignBrandIfKnown"
     let products = await getPharmacyItems(countryCode, source, versionKey, false)
     let counter = 0
+    
     for (let product of products) {
         counter++
 
@@ -163,7 +181,7 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
             continue
         }
 
-        // Clean the title before matching
+        // Rule 2: Remove noise words from title
         const cleanedTitle = removeNoiseWords(product.title)
 
         let matchedBrands = []
@@ -173,20 +191,28 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
                 if (matchedBrands.includes(brand)) {
                     continue
                 }
+                // Use cleaned title with all validation rules
                 const isBrandMatch = checkBrandIsSeparateTerm(cleanedTitle, brand)
                 if (isBrandMatch) {
                     matchedBrands.push(brand)
                 }
             }
         }
+        
+        // Rule 5: Prioritize brands by position in title
+        if (matchedBrands.length > 1) {
+            matchedBrands = prioritizeBrandsByPosition(matchedBrands, product.title)
+        }
+        
         console.log(`${product.title} -> ${_.uniq(matchedBrands)}`)
+        
         const sourceId = product.source_id
         const meta = { matchedBrands }
         const brand = matchedBrands.length ? matchedBrands[0] : null
 
         const key = `${source}_${countryCode}_${sourceId}`
         const uuid = stringToHash(key)
-        
+
         // Then brand is inserted into product mapping table
     }
 }
