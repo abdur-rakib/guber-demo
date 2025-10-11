@@ -11,6 +11,24 @@ type BrandsMapping = {
     [key: string]: string[]
 }
 
+// Noise words
+const NOISE_WORDS = ["bio", "neb"]
+
+/**
+ * Removes noise words from product title before brand matching
+ * Example: "BIO Bayer Aspirin" -> "Bayer Aspirin"
+ */
+function removeNoiseWords(title: string): string {
+    let cleanedTitle = title
+    NOISE_WORDS.forEach(noiseWord => {
+        // Remove noise word with word boundaries (case-insensitive)
+        const regex = new RegExp(`\\b${noiseWord}\\b`, "gi")
+        cleanedTitle = cleanedTitle.replace(regex, "").trim()
+    })
+    // Clean up multiple spaces
+    return cleanedTitle.replace(/\s+/g, " ").trim()
+}
+
 export async function getBrandsMapping(): Promise<BrandsMapping> {
     const brandConnections = connections
 
@@ -98,6 +116,9 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
             continue
         }
 
+        // Clean the title before matching
+        const cleanedTitle = removeNoiseWords(product.title)
+
         let matchedBrands = []
         for (const brandKey in brandsMapping) {
             const relatedBrands = brandsMapping[brandKey]
@@ -105,7 +126,7 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
                 if (matchedBrands.includes(brand)) {
                     continue
                 }
-                const isBrandMatch = checkBrandIsSeparateTerm(product.title, brand)
+                const isBrandMatch = checkBrandIsSeparateTerm(cleanedTitle, brand)
                 if (isBrandMatch) {
                     matchedBrands.push(brand)
                 }
@@ -118,7 +139,7 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
 
         const key = `${source}_${countryCode}_${sourceId}`
         const uuid = stringToHash(key)
-
+        
         // Then brand is inserted into product mapping table
     }
 }
