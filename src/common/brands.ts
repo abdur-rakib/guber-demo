@@ -49,18 +49,34 @@ async function getPharmacyItems(countryCode: countryCodes, source: sources, vers
     return finalProducts
 }
 
+/**
+ * Normalizes special characters in brand names for matching
+ * Example: "Babē" -> "Babe", "Müller" -> "Muller"
+ */
+function normalizeBrandName(brand: string): string {
+    return brand
+        .normalize("NFD") // Decompose characters
+        .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
+        .toLowerCase()
+        .trim()
+}
+
 export function checkBrandIsSeparateTerm(input: string, brand: string): boolean {
+    // Normalize both input and brand before matching
+    const normalizedInput = normalizeBrandName(input)
+    const normalizedBrand = normalizeBrandName(brand)
+
     // Escape any special characters in the brand name for use in a regular expression
-    const escapedBrand = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const escapedBrand = normalizedBrand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
     // Check if the brand is at the beginning or end of the string
     const atBeginningOrEnd = new RegExp(
         `^(?:${escapedBrand}\\s|.*\\s${escapedBrand}\\s.*|.*\\s${escapedBrand})$`,
         "i"
-    ).test(input)
+    ).test(normalizedInput)
 
     // Check if the brand is a separate term in the string
-    const separateTerm = new RegExp(`\\b${escapedBrand}\\b`, "i").test(input)
+    const separateTerm = new RegExp(`\\b${escapedBrand}\\b`, "i").test(normalizedInput)
 
     // The brand should be at the beginning, end, or a separate term
     return atBeginningOrEnd || separateTerm
