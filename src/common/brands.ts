@@ -201,7 +201,7 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
         
         // Rule 5: Prioritize brands by position in title
         if (matchedBrands.length > 1) {
-            matchedBrands = prioritizeBrandsByPosition(matchedBrands, product.title)
+            matchedBrands = prioritizeBrandsByPosition(matchedBrands, cleanedTitle)
         }
         
         console.log(`${product.title} -> ${_.uniq(matchedBrands)}`)
