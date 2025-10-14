@@ -28,18 +28,16 @@ const CASE_SENSITIVE_BRANDS = ["HAPPY"]
  * Some brands are only valid at specific positions in the title
  */
 function checkBrandPosition(title: string, brand: string): boolean {
-    const normalizedTitle = normalizeBrandName(title)
-    const normalizedBrand = normalizeBrandName(brand)
-    const words = normalizedTitle.split(/\s+/)
+    const words = title.split(/\s+/)
     
     // Rule 3: Must be at front (position 0)
-    if (FRONT_ONLY_BRANDS.includes(normalizedBrand)) {
-        return words[0] === normalizedBrand
+    if (FRONT_ONLY_BRANDS.includes(brand)) {
+        return words[0] === brand
     }
     
     // Rule 4: Must be at front OR second position (0 or 1)
-    if (FRONT_OR_SECOND_BRANDS.includes(normalizedBrand)) {
-        return words[0] === normalizedBrand || words[1] === normalizedBrand
+    if (FRONT_OR_SECOND_BRANDS.includes(brand)) {
+        return words[0] === brand || words[1] === brand
     }
     
     // If not position-sensitive, allow anywhere
@@ -129,6 +127,10 @@ function normalizeBrandName(brand: string): string {
 }
 
 export function checkBrandIsSeparateTerm(input: string, brand: string): boolean {
+     // Rule 1: Normalize characters
+    const normalizedInput = normalizeBrandName(input)
+    const normalizedBrand = normalizeBrandName(brand)
+
     // Rule 6: Handle case-sensitive brands
     if (CASE_SENSITIVE_BRANDS.includes(brand)) {
         const escapedBrand = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -137,12 +139,8 @@ export function checkBrandIsSeparateTerm(input: string, brand: string): boolean 
         if (!matchFound) return false
         
         // Check position rules
-        return checkBrandPosition(input, brand)
+        return checkBrandPosition(normalizedInput, normalizedBrand)
     }
-    
-    // Rule 1: Normalize characters
-    const normalizedInput = normalizeBrandName(input)
-    const normalizedBrand = normalizeBrandName(brand)
 
     // Escape any special characters in the brand name for use in a regular expression
     const escapedBrand = normalizedBrand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -161,7 +159,7 @@ export function checkBrandIsSeparateTerm(input: string, brand: string): boolean 
     if (!matchFound) return false
     
     // Rules 3 & 4: Check position requirements
-    return checkBrandPosition(input, brand)
+    return checkBrandPosition(normalizedInput, normalizedBrand)
 }
 
 export async function assignBrandIfKnown(countryCode: countryCodes, source: sources, job?: Job) {
