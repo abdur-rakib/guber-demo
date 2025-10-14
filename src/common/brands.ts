@@ -76,6 +76,54 @@ function removeNoiseWords(title: string): string {
     return cleanedTitle.replace(/\s+/g, " ").trim()
 }
 
+/**
+ * Selects a single canonical brand from a group of related brands
+ * This ensures that all products in the same brand group get assigned the same canonical brand
+ * 
+ * Strategy: Pick the shortest brand name for consistency
+ * Example: ["baff-bombz", "zimpli kids"] -> always returns "baff-bombz" (shorter)
+ * 
+ * @param matchedBrands Array of brands that matched the product title
+ * @param brandsMapping The complete brand mapping to find all related brands
+ * @returns Single canonical brand name
+ */
+function getCanonicalBrand(
+    matchedBrands: string[], 
+    brandsMapping: BrandsMapping
+): string {
+    if (matchedBrands.length === 1) return matchedBrands[0]
+    
+    // Collect all brands in the same group(s)
+    const brandGroup = new Set<string>()
+    
+    matchedBrands.forEach(brand => {
+        // Add the brand itself
+        brandGroup.add(brand)
+        
+        // Add all its related brands to get the complete group
+        if (brandsMapping[brand]) {
+            brandsMapping[brand].forEach(relatedBrand => {
+                brandGroup.add(relatedBrand)
+            })
+        }
+    })
+    
+    // Convert to array and sort by:
+    // 1. Length (shortest first - more concise brand names preferred)
+    // 2. Alphabetically (for consistent ordering when lengths are equal)
+    const sortedBrands = Array.from(brandGroup).sort((a, b) => {
+        // Primary sort: by length (shorter is better)
+        if (a.length !== b.length) {
+            return a.length - b.length
+        }
+        // Secondary sort: alphabetically (for deterministic results)
+        return a.localeCompare(b)
+    })
+    
+    // Return the canonical brand (shortest, or alphabetically first if tied)
+    return sortedBrands[0]
+}
+
 export async function getBrandsMapping(): Promise<BrandsMapping> {
     const brandConnections = connections
 
@@ -202,8 +250,14 @@ export async function assignBrandIfKnown(countryCode: countryCodes, source: sour
             matchedBrands = prioritizeBrandsByPosition(matchedBrands, cleanedTitle)
         }
         
-        console.log(`${product.title} -> ${_.uniq(matchedBrands)}`)
+        // Task 2: Always assign the same canonical brand for the entire group
+        // This ensures consistent brand assignment across all products in the same brand family
+        const outputBrand = matchedBrands.length 
+            ? getCanonicalBrand(matchedBrands, brandsMapping)
+            : ''
         
+        console.log(`${product.title} -> ${outputBrand}`)
+
         const sourceId = product.source_id
         const meta = { matchedBrands }
         const brand = matchedBrands.length ? matchedBrands[0] : null
